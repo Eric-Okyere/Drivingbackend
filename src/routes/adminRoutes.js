@@ -10,6 +10,9 @@ const {
   deleteQuestion,
   listQuestionsForLessonAdmin,
   listStudents,
+  listPayments,
+  activateSubscription,
+  revokeSubscription,
 } = require('../controllers/adminController');
 
 const router = express.Router();
@@ -27,5 +30,9 @@ router.put('/questions/:id', updateQuestion);
 router.delete('/questions/:id', deleteQuestion);
 
 router.get('/students', listStudents);
+
+router.get('/payments', listPayments);
+router.post('/students/:id/activate-subscription', activateSubscription);
+router.post('/students/:id/revoke-subscription', revokeSubscription);
 
 module.exports = router;

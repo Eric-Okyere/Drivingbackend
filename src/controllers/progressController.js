@@ -4,6 +4,7 @@ const Lesson = require('../models/Lesson');
 const Attempt = require('../models/Attempt');
 const LessonProgress = require('../models/LessonProgress');
 const { awardBadge } = require('../utils/badges');
+const { isLessonFree, hasActiveSubscription, SUBSCRIPTION_PRICE_GHS } = require('../utils/subscription');
 
 const PASS_THRESHOLD_PERCENT = 70; // per-lesson quizzes use 70%, matching the DVLA CBT-style bar
 
@@ -20,6 +21,14 @@ async function submitLessonQuiz(req, res, next) {
 
     const lesson = await Lesson.findById(lessonId);
     if (!lesson) return res.status(404).json({ message: 'Lesson not found' });
+
+    const subscribed = hasActiveSubscription(req.user) || req.user?.role === 'admin';
+    if (!isLessonFree(lesson) && !subscribed) {
+      return res.status(402).json({
+        message: `An active Rhema Driving School subscription (GHS ${SUBSCRIPTION_PRICE_GHS}/month) is required for this.`,
+        code: 'SUBSCRIPTION_REQUIRED',
+      });
+    }
 
     const questionIds = answers.map((a) => a.questionId);
     const questions = await Question.find({ _id: { $in: questionIds } });

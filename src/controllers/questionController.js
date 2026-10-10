@@ -1,12 +1,23 @@
 const mongoose = require('mongoose');
 const Question = require('../models/Question');
 const Lesson = require('../models/Lesson');
+const { isLessonFree, hasActiveSubscription, SUBSCRIPTION_PRICE_GHS } = require('../utils/subscription');
+
+function subscriptionRequiredResponse(res) {
+  return res.status(402).json({
+    message: `An active Rhema Driving School subscription (GHS ${SUBSCRIPTION_PRICE_GHS}/month) is required for this.`,
+    code: 'SUBSCRIPTION_REQUIRED',
+  });
+}
 
 // Returns quiz questions for a lesson WITHOUT the correct answer index, so the client can't cheat by reading the payload.
 async function getQuestionsForLesson(req, res, next) {
   try {
     const lesson = await Lesson.findOne({ slug: req.params.slug }).lean();
     if (!lesson) return res.status(404).json({ message: 'Lesson not found' });
+
+    const subscribed = hasActiveSubscription(req.user) || req.user?.role === 'admin';
+    if (!isLessonFree(lesson) && !subscribed) return subscriptionRequiredResponse(res);
 
     const questions = await Question.find({ lesson: lesson._id }).lean();
 
@@ -36,6 +47,10 @@ async function submitAnswer(req, res, next) {
 
     const question = await Question.findById(questionId);
     if (!question) return res.status(404).json({ message: 'Question not found' });
+
+    const lesson = await Lesson.findById(question.lesson).lean();
+    const subscribed = hasActiveSubscription(req.user) || req.user?.role === 'admin';
+    if (lesson && !isLessonFree(lesson) && !subscribed) return subscriptionRequiredResponse(res);
 
     const correct = question.correctIndex === selectedIndex;
 
